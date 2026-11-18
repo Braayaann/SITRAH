@@ -2,6 +2,8 @@
 
 Primera versión local para la Facultad de Filosofía y Humanidades de la Universidad de Chile. Incluye frontend React, API Django, PostgreSQL y un proxy Nginx. El código usa los materiales de la segunda reunión como referencia y el correo de Roberto como confirmación del orden. Los datos de demostración son ficticios.
 
+Si te estás incorporando al equipo, empieza por la [guía de incorporación](GUIA-INCORPORACION.md): contexto, acuerdos, flujo, perfiles y pasos para probar la versión actual.
+
 ## Versión 0.2 · Acuerdos de la reunión del 12 de noviembre
 
 - **Docencia por jerarquía:** la unidad indica las horas lectivas y no lectivas y envía sin monto ni cuotas. En Disponibilidad presupuestaria, el perfil Dirección DEA registra el cálculo que realizó la DEA y luego visa. Las tarifas no se calculan automáticamente.
