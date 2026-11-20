@@ -277,6 +277,7 @@ class WorkflowTest(TestCase):
         u.save()
         c=Client(enforce_csrf_checks=True)
         self.assertEqual(c.get("/api/cases/").status_code,401)
+
         data={"username":"academica","password":"una-clave-prueba"}
         self.assertEqual(c.post("/api/login/",data,content_type="application/json").status_code,403)
         token=c.get("/api/session/").json()["csrf"]
@@ -285,3 +286,69 @@ class WorkflowTest(TestCase):
         self.assertEqual(login.json()["user"]["role"],"academica")
         self.assertEqual(c.post("/api/logout/",{},content_type="application/json",HTTP_X_CSRFTOKEN=login.json()["csrf"]).status_code,200)
         self.assertEqual(c.get("/api/cases/").status_code,401)
+
+    def test_only_pregrado_and_postgrado_can_receive_optional_consultations(self):
+        from .flow import ROLES, SPECIALTIES
+        self.assertEqual(set(SPECIALTIES),{"pregrado","postgrado"})
+        self.assertNotIn("admin",ROLES)
+        self.assertNotIn("extension",ROLES)
+        r=self.create()
+        self.url=f"/api/cases/{r.json()['id']}/"
+        for role in ("secretaria_dea","direccion_dea"):
+            self.login_as(role)
+            self.do("advance")
+        self.login_as("academica")
+        self.do("consult",400,specialty="extension",note="Consulta ya no disponible.")
+        self.do("consult",specialty="pregrado",note="Revisar pertinencia de pregrado.")
+        self.login_as("postgrado")
+        self.assertEqual(self.c.get(self.url).status_code,404)
+        self.login_as("academica")
+        self.do("consult",specialty="postgrado",note="Revisar pertinencia de postgrado.")
+        self.do("advance",409)
+        for role in ("pregrado","postgrado"):
+            self.login_as(role)
+            detail=self.detail()
+            self.assertEqual([q["specialty"] for q in detail["consultations"]],[role])
+            self.assertIsNone(detail["bank"])
+            self.assertNotIn("identifier",detail["data"])
+            self.do("reply",consultation=detail["consultations"][0]["id"],decision="approved")
+        self.login_as("academica")
+        self.do("advance")
+        self.assertEqual(self.detail()["stage"],"decanato")
+
+    def test_retired_roles_cannot_sign_in_or_keep_session_access(self):
+        for role in ("extension","admin"):
+            user=get_user_model().objects.create_user(username=role,password="retired-test-only")
+            Profile.objects.create(user=user,role=role)
+            self.c.logout()
+            response=self.c.post("/api/login/",{"username":role,"password":"retired-test-only"},content_type="application/json")
+            self.assertEqual(response.status_code,401)
+            self.c.force_login(user)
+            self.assertIsNone(self.c.get("/api/session/").json()["user"])
+            self.assertEqual(self.c.get("/api/cases/").status_code,401)
+
+    def test_migration_cancels_only_pending_extension_consultations(self):
+        from importlib import import_module
+        from django.apps import apps
+        from django.db import connection
+        migrate=import_module("tramites.migrations.0004_retire_extension_consultations").retire_pending_consultations
+        r=self.create()
+        case=Case.objects.get(pk=r.json()["id"])
+        case.stage="academica"
+        case.save()
+        actor=get_user_model().objects.get(username="academica")
+        pending=Consultation.objects.create(case=case,specialty="extension",requested_by=actor,question="Consulta antigua")
+        resolved=Consultation.objects.create(case=case,specialty="extension",requested_by=actor,question="Consulta resuelta",decision="approved",answer="Respuesta anterior")
+        current=Consultation.objects.create(case=case,specialty="pregrado",requested_by=actor,question="Consulta vigente")
+        initial_version=case.version
+        from types import SimpleNamespace
+        editor=SimpleNamespace(connection=connection)
+        migrate(apps,editor)
+        migrate(apps,editor)
+        pending.refresh_from_db();resolved.refresh_from_db();current.refresh_from_db();case.refresh_from_db()
+        self.assertEqual(pending.decision,"cancelled")
+        self.assertEqual(resolved.answer,"Respuesta anterior")
+        self.assertEqual(current.decision,"pending")
+        self.assertEqual(case.stage,"academica")
+        self.assertEqual(case.version,initial_version+1)
+        self.assertEqual(Event.objects.filter(case=case,action="Consulta retirada por actualización del sistema").count(),1)

@@ -12,11 +12,11 @@ STAGES = [
     ("contabilidad", "Revisión de Contabilidad", "contabilidad"),
     ("pago", "Pago y cierre", "contabilidad"),
 ]
-SPECIALTIES = {"extension": "Extensión", "pregrado": "Pregrado", "postgrado": "Postgrado"}
+SPECIALTIES = {"pregrado": "Pregrado", "postgrado": "Postgrado"}
 ROLES = {
     "requirente": "Unidad requirente", "secretaria_dea": "Secretaría DEA", "direccion_dea": "Dirección DEA",
     "academica": "Dirección Académica", "decanato": "Decanato", "personas": "Gestión de Personas",
-    "contabilidad": "Contabilidad", "admin": "Administración de seguimiento", **SPECIALTIES,
+    "contabilidad": "Contabilidad", **SPECIALTIES,
 }
 REVIEW = {"documental", "presupuesto", "academica", "decanato", "contabilidad"}
 INITIAL_DOCS = {"memo": "Memo o respaldo de la unidad", "identidad": "Identificación", "cv": "Currículum", "titulo": "Título, grado o respaldo de experticia"}

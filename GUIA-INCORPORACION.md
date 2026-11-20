@@ -33,7 +33,7 @@ Cada área da su propio visto bueno en la etapa que le corresponde. El sistema h
 
 ### Consulta académica opcional
 
-Académica puede visar sin consultar. Si necesita una revisión adicional, solicita un visto bueno a **Extensión, Pregrado o Postgrado** desde el expediente. Puede consultar a más de una dirección. Cada una responde en el sistema y su respuesta queda registrada. Mientras haya respuestas pendientes, el expediente sigue en Académica.
+Académica puede visar sin consultar. Si necesita una revisión adicional, solicita un visto bueno a **Pregrado o Postgrado** desde el expediente. Puede consultar a más de una dirección. Cada una responde en el sistema y su respuesta queda registrada. Mientras haya respuestas pendientes, el expediente sigue en Académica.
 
 **La respuesta de una dirección consultada no envía el expediente a Decanato.** Académica revisa el resultado, resuelve las observaciones o devuelve si hace falta, y da su propio visto bueno. Decanato luego hace su revisión por separado.
 
@@ -75,11 +75,10 @@ Abre [http://localhost:8080](http://localhost:8080). En el modo de demostración
 | `secretaria_dea` | Revisar requisitos, devolver o visar. También puede completar datos bancarios. |
 | `direccion_dea` | Registrar cálculo docente, aprobar presupuesto y gestionar datos bancarios. |
 | `academica` | Consultar a otra dirección, revisar la respuesta y dar el visto bueno académico. |
-| `extension`, `pregrado`, `postgrado` | Responder una consulta que les fue asignada. |
+| `pregrado`, `postgrado` | Responder una consulta que les fue asignada. |
 | `decanato` | Dar el visto bueno de Decanato. |
 | `personas` | Tomar expediente, descargar el ZIP de antecedentes, registrar el convenio, firmas y decreto. |
 | `contabilidad` | Verificar boletas, informes y cuenta bancaria; registrar los pagos. |
-| `admin` | Consultar expedientes para seguimiento. En el piloto no equivale a una interfaz completa de administración de usuarios. |
 
 **Demostración recomendada:** crea una solicitud de docencia por jerarquía con 20 horas lectivas y 5 no lectivas, RUT de prueba `12.345.678-5`, fechas de agosto a noviembre del mismo año y PDF ficticios. Como Secretaría DEA, visa los antecedentes. Como Dirección DEA, comprueba que no puedes visar hasta cargar el cálculo; puedes usar un bruto ficticio de $310.000 y dos cuotas de $160.000 y $150.000. Como Académica, consulta a Pregrado; responde con `pregrado` y vuelve a `academica` para comprobar que todavía debe visar antes de que Decanato la reciba. Para continuar hasta el cierre, usa el orden y los documentos de la tabla de etapas.
 
