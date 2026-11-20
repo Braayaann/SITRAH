@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useState,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import './style.css';
 import Wizard from './RequestWizard.jsx';
@@ -33,6 +33,7 @@ function Login({ctx,onLogin}){
 }
 function App(){
  const [ctx,setCtx]=useState(null),[page,setPage]=useState('bandeja'),[rows,setRows]=useState([]),[item,setItem]=useState(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const mutationPending=useRef(false);
  async function refresh(){setRows((await api('cases/')).cases)}
  function fail(err){setError(err.message)}
  function go(p){setPage(p);setItem(null);setError('');setNotice('')}
@@ -40,7 +41,8 @@ function App(){
  useEffect(()=>{if(ctx?.user)refresh().catch(fail)},[ctx?.user?.role]);
  async function open(id){setError('');setNotice('');try{setItem(await api('cases/'+id+'/'));setPage('detalle');window.scrollTo(0,0)}catch(err){fail(err)}}
  async function mutate(path,data,msg){
-   setBusy(true);setError('');setNotice('');
+   if(mutationPending.current)return false;
+   mutationPending.current=true;setBusy(true);setError('');setNotice('');
    try{const out=await api(path,'POST',data);await open(out.id);await refresh();setNotice(msg);return true}
    catch(err){fail(err);return false}finally{setBusy(false)}
  }

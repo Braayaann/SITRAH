@@ -15,6 +15,25 @@ def pdf():
     return SimpleUploadedFile("respaldo-prueba.pdf",b"%PDF-1.4\n%%EOF",content_type="application/pdf")
 
 class WorkflowTest(TestCase):
+    def test_two_users_same_role_preserve_requests_and_reject_stale_action(self):
+        second=get_user_model().objects.create_user(username="segunda_secretaria")
+        Profile.objects.create(user=second,role="secretaria_dea")
+        first=self.create()
+        another=self.create({**self.payload,"provider":"Segundo prestador"})
+        self.assertEqual(first.status_code,201)
+        self.assertEqual(another.status_code,201)
+        self.assertNotEqual(first.json()["id"],another.json()["id"])
+        self.url=f"/api/cases/{first.json()['id']}/"
+        self.login_as("secretaria_dea")
+        version=self.detail()["version"]
+        other=Client()
+        other.force_login(second)
+        self.assertEqual(len(other.get("/api/cases/").json()["cases"]),2)
+        self.do("advance")
+        result=other.post(self.url+"action/",{"action":"advance","version":version},content_type="application/json")
+        self.assertIn(result.status_code,(403,409))
+        self.assertEqual(Case.objects.get(pk=first.json()["id"]).stage,"presupuesto")
+
     @classmethod
     def setUpTestData(cls):
         cls.unit=Unit.objects.create(name="Unidad A")

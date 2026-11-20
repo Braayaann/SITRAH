@@ -19,6 +19,9 @@ INSTALLED_APPS = ["django.contrib.auth", "django.contrib.contenttypes", "django.
 MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware"]
 DATABASES = {"default": {"ENGINE": "django.db.backends.postgresql", "HOST": os.environ["POSTGRES_HOST"], "PORT": "5432", "NAME": "sitrah", "USER": "sitrah", "PASSWORD": os.environ["POSTGRES_PASSWORD"]}} if os.getenv("POSTGRES_HOST") else {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "local.sqlite3"}}
 LANGUAGE_CODE = "es-cl"
+if os.getenv("POSTGRES_HOST"):
+    DATABASES["default"].update(CONN_MAX_AGE=60, CONN_HEALTH_CHECKS=True,
+        OPTIONS={"connect_timeout": 10})
 TIME_ZONE = "America/Santiago"
 USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

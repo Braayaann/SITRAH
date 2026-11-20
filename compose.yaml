@@ -2,6 +2,7 @@ name: sitrah
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: sitrah
       POSTGRES_USER: sitrah
@@ -15,11 +16,19 @@ services:
       retries: 20
   backend:
     build: ./backend
+    restart: unless-stopped
+    stop_grace_period: 40s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; host=os.environ.get('DJANGO_ALLOWED_HOSTS','localhost').split(',')[0].strip(); urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/api/health/',headers={'Host':host}),timeout=5)"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 40s
     environment:
       POSTGRES_HOST: db
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sitrah-local-db}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-sitrah-desarrollo-local-no-produccion}
-      SITRAH_DEMO: ${SITRAH_DEMO:-1}
+      SITRAH_DEMO: ${SITRAH_DEMO:-0}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend,testserver}
       DJANGO_HTTPS: ${DJANGO_HTTPS:-0}
@@ -28,13 +37,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-ec", "python manage.py migrate --noinput; if [ \"$$SITRAH_DEMO\" = 1 ]; then python manage.py demo; fi; exec gunicorn config.wsgi --bind 0.0.0.0:8000 --workers 2"]
+    command: ["sh", "-ec", "python manage.py migrate --noinput; if [ \"$$SITRAH_DEMO\" = 1 ]; then python manage.py demo; fi; exec gunicorn config.wsgi --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 60 --graceful-timeout 30 --max-requests 1000 --max-requests-jitter 100"]
   frontend:
     build: ./frontend
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 volumes:
   pgdata:
   documentos:

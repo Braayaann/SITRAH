@@ -74,5 +74,11 @@ Para crear una cuenta de prueba en una base sin demo, usa `docker compose exec b
 
 ## Despliegue automático
 
+Preparación del piloto: Compose desactiva los ejemplos por defecto (`SITRAH_DEMO=0`), conserva los volúmenes y todas las solicitudes existentes. Si AWS ya define `SITRAH_DEMO=1`, esa configuración tiene prioridad y debe cambiarse en el servidor. No se ejecuta ninguna limpieza de datos.
+
+Cada persona debe tener su propia cuenta; varias cuentas pueden compartir rol. Las unidades delimitan las solicitudes visibles para requirentes. Las operaciones sobre expedientes usan bloqueo de fila y versión para rechazar cambios desactualizados. El formulario bloquea envíos repetidos mientras hay una operación pendiente. Para crear cuentas sin permisos de superusuario: `docker compose exec backend python manage.py create_account USUARIO ROL --name "Nombre" --email "correo@institucion.cl"`; agrega `--unit "Unidad"` para requirentes. La contraseña se solicita de forma oculta en la terminal.
+
+El backend usa dos procesos con cuatro hilos cada uno, conexiones PostgreSQL reutilizadas con comprobación de salud y reinicio de procesos tras un número acotado de peticiones. Los servicios se reinician si terminan; el frontend espera a que la API y la base respondan antes de iniciar. Estas medidas no garantizan una capacidad concreta: antes de convocar usuarios debe verificarse el despliegue, los recursos de EC2 y una prueba de carga en un entorno de ensayo con PostgreSQL. Las pruebas locales verifican persistencia, permisos y rechazo de una segunda acción desactualizada; no equivalen a una prueba simultánea de carga en AWS.
+
 SITRAH se encuentra alojado en AWS EC2 y cuenta con
 despliegue automático desde la rama main de GitHub.
