@@ -35,6 +35,12 @@ docker compose down
 
 ## Probar una solicitud
 
+El formulario del requirente conserva las siete secciones del prototipo revisado el 12 de noviembre. En docencia por jerarquía se omite Financiamiento: la unidad informa horas y antecedentes, y Dirección DEA registra posteriormente el monto, centro de costo y cuotas. En docencia por curso o diplomado y otras actividades se informa el monto en CLP y se distribuye manualmente en una grilla mensual; los meses sin pago quedan vacíos y se muestran cantidad de cuotas, total y diferencia. Se mantienen las reglas del piloto sobre montos distintos y suma exacta.
+
+La fecha se asigna en el servidor y la unidad proviene de la cuenta. El formulario incorpora jornada, horas semanales y totales, supervisión con RUT, viáticos condicionales y tipo de certificado. Los datos bancarios pueden quedar pendientes. Se solicitan al inicio memorando, CV, identificación y certificado; las declaraciones juradas se incorporan al elaborar el convenio. Un pasaporte no exige automáticamente un permiso laboral: los respaldos adicionales y la procedencia del circuito los revisa DEA. Estos ajustes reproducen la propuesta del formulario y no constituyen una aprobación institucional de los puntos pendientes.
+
+Para verificar las reglas del formulario: `npm --prefix frontend test`. La compilación sigue usando `npm --prefix frontend run build`; las pruebas de la API se ejecutan con `python manage.py test` desde `backend/`.
+
 Las cuentas aparecen en la pantalla de acceso con `SITRAH_DEMO=1` (valor local predeterminado). Todas usan la clave de ejemplo **Sitrah-Demo-2026**.
 
 1. Ingresa como `requirente`. Completa el formulario por pasos y adjunta PDF ficticios. Usa por ejemplo el RUT de prueba `12.345.678-5`. Para probar una solicitud sin monto, selecciona «Docencia por jerarquía».

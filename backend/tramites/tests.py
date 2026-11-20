@@ -152,14 +152,61 @@ class WorkflowTest(TestCase):
         self.assertEqual(self.detail()["decree"],"D-01")
         self.assertTrue(Event.objects.filter(action="Respuesta de Pregrado").exists())
 
-    def test_rejects_bad_totals_or_incomplete_conditional_documents(self):
+    def test_rejects_bad_totals_and_accepts_passport_with_initial_documents(self):
         bad={**self.payload,"amount":999999}
         self.assertEqual(self.create(bad).status_code,400)
         passport={**self.payload,"identity_type":"passport","identifier":"PRUEBA001"}
         r=self.create(passport)
-        self.assertEqual(r.status_code,400)
-        self.assertIn("remuneradas",r.json()["error"])
+        self.assertEqual(r.status_code,201,r.content)
+        self.assertEqual(Case.objects.count(),1)
+
+    def updated_payload(self,category="Docencia por curso o diplomado"):
+        year=timezone.localdate().year
+        return {**self.payload,"form_version":2,"category":category,"honorarium_type":"Persona Natural",
+            "workload":"Parcial","provider_phone":"222222222","locality":"Santiago",
+            "supervisor":"Supervisor Ficticio","supervisor_identifier":"12.345.678-5",
+            "service_location":"Santiago","justification":"Actividad de prueba","certificate_type":"Experticia",
+            "weekly_hours":2.5,"total_hours":10.5,"lective_hours":8,"non_lective_hours":2.5,
+            "travel":"no","start":f"{year}-11-20","end":f"{year}-12-31",
+            "installments":[{"month":f"{year}-11","amount":160000},{"month":f"{year}-12","amount":150000}]}
+
+    @patch("django.utils.timezone.localdate",return_value=date(2026,11,20))
+    def test_updated_form_preserves_details_and_uses_server_date(self,_):
+        data={**self.updated_payload(),"request_date":"2020-01-01","bank":{"pending":True}}
+        r=self.create(data)
+        self.assertEqual(r.status_code,201,r.content)
+        case=Case.objects.get(pk=r.json()["id"])
+        self.assertEqual(case.payload["request_date"],"2026-11-20")
+        for key in ("honorarium_type","workload","weekly_hours","total_hours","supervisor_identifier","certificate_type","lective_hours","non_lective_hours"):
+            self.assertEqual(case.payload[key],data[key] if key!="supervisor_identifier" else "12345678-5")
+        self.assertEqual(case.bank,{})
+        self.assertEqual(case.installments.count(),2)
+
+    @patch("django.utils.timezone.localdate",return_value=date(2026,11,20))
+    def test_updated_hierarchy_skips_finance_and_supports_internal_calculation(self,_):
+        data={**self.updated_payload(TEACHING),"cost_center":"","amount":None,"installments":[]}
+        r=self.create(data)
+        self.assertEqual(r.status_code,201,r.content)
+        self.url=f"/api/cases/{r.json()['id']}/"
+        self.login_as("secretaria_dea")
+        self.do("advance")
+        self.login_as("direccion_dea")
+        self.do("finance",400,amount=310000,installments=self.updated_payload()["installments"])
+        self.do("finance",cost_center="CC-123",amount=310000,installments=self.updated_payload()["installments"])
+        self.assertEqual(self.detail()["data"]["cost_center"],"CC-123")
+        self.do("advance")
+
+    @patch("django.utils.timezone.localdate",return_value=date(2026,11,20))
+    def test_updated_form_rejects_invalid_hours_supervisor_and_missing_certificate(self,_):
+        for change in ({"non_lective_hours":2},{"supervisor_identifier":"12.345.678-0"},{"certificate_type":""},{"start":"2026-11-19"},{"public_employee":True,"public_entity":"Otra institución","public_contract":"Contrata","public_hours":"2.5","public_duties":"Docencia"}):
+            with self.subTest(change=change):
+                self.assertEqual(self.create({**self.updated_payload(),**change}).status_code,400)
         self.assertEqual(Case.objects.count(),0)
+
+    @patch("django.utils.timezone.localdate",return_value=date(2026,3,1))
+    def test_updated_form_allows_more_than_six_months_in_same_year(self,_):
+        data={**self.updated_payload(),"start":"2026-03-01","end":"2026-12-31"}
+        self.assertEqual(self.create(data).status_code,201)
 
     def test_teaching_calculation_and_hours_return(self):
         payload={**self.payload,"category":TEACHING,"lective_hours":20,"non_lective_hours":5}

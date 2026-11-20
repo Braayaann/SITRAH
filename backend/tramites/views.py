@@ -18,8 +18,8 @@ from .validation import Invalid, string, read_date, validate_payload, intake_fil
 INDEX = {s[0]: i for i,s in enumerate(STAGES)}
 STAGE_ROLES = {key: role for key, _, role in STAGES}
 BANK_EDITORS = {"secretaria_dea","direccion_dea"}
-FINANCIAL = {"amount","cost_center","start","end","category",*TEACHING_HOURS}
-ACADEMIC = {"category","start","end","work","justification","supervisor","service_location","provider","identifier","identity_type",*TEACHING_HOURS}
+FINANCIAL = {"amount","cost_center","start","end","category","weekly_hours","total_hours","travel","travel_reason",*TEACHING_HOURS}
+ACADEMIC = {"category","start","end","work","justification","supervisor","supervisor_identifier","service_location","provider","identifier","identity_type","workload","weekly_hours","total_hours",*TEACHING_HOURS}
 
 def api(*methods, auth=True):
     def decorate(fn):
@@ -67,7 +67,7 @@ def health(request):
 
 def context(request):
     p = profile(request)
-    return {"user": {"name":request.user.get_full_name() or request.user.username, "role":p.role, "unit":p.unit_id} if p else None,
+    return {"user": {"name":request.user.get_full_name() or request.user.username, "email":request.user.email, "role":p.role, "unit":p.unit_id} if p else None,
         "roles":ROLES,"stages":STAGES,"specialties":SPECIALTIES,"demo":settings.SITRAH_DEMO,
         "csrf":get_token(request), "intake_open":timezone.localdate().month!=2,
         "units":list(Unit.objects.filter(Q(active=True)|Q(pk=p.unit_id)).values("id","name")) if p else []}
@@ -136,6 +136,7 @@ def cases(request):
     if timezone.localdate().month==2:
         raise Invalid("En febrero no se reciben solicitudes nuevas.")
     data=body(request,multipart=True)
+    data["request_date"]=timezone.localdate().isoformat()
     clean,parts=validate_payload(data)
     bank=validate_bank(data.get("bank",{}))
     intake_files(request,clean)
@@ -184,12 +185,13 @@ def correct(request,pk):
     require_current(request,c,data)
     if c.stage!="intake" or not c.returned_from:
         raise Invalid("No hay una devolución pendiente.")
+    data["request_date"]=c.payload["request_date"]
     clean,parts=validate_payload(data)
     intake_files(request,clean,c.documents.values_list("kind",flat=True))
     old_parts=list(c.installments.order_by("month").values("month","amount"))
     # Conservar el cálculo interno cuando la corrección no cambia sus insumos.
     teacher_unchanged=clean["category"]==c.payload["category"]==TEACHING and all(
-        clean.get(k)==c.payload.get(k) for k in ("start","end",*TEACHING_HOURS))
+        clean.get(k)==c.payload.get(k) for k in ("start","end","weekly_hours","total_hours",*TEACHING_HOURS))
     if teacher_unchanged:
         clean["amount"],parts=c.payload["amount"],old_parts
     changed={k for k in set(clean)|set(c.payload) if clean.get(k)!=c.payload.get(k)}
@@ -248,6 +250,8 @@ def action(request,pk):
         if c.stage!="presupuesto" or c.payload["category"]!=TEACHING:
             raise Invalid("El cálculo docente corresponde a la revisión presupuestaria.",403)
         amount,parts=validate_finance(data,read_date(c.payload["start"],"inicio"),read_date(c.payload["end"],"término"))
+        if "cost_center" in data or not c.payload.get("cost_center"):
+            c.payload["cost_center"]=string(data,"cost_center","centro de costo",200)
         c.payload["amount"]=amount
         c.installments.all().delete()
         Installment.objects.bulk_create([Installment(case=c,**x) for x in parts])
