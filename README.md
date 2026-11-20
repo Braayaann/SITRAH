@@ -63,3 +63,8 @@ Las cuentas aparecen en la pantalla de acceso con `SITRAH_DEMO=1` (valor local p
 - `compose.yaml`: PostgreSQL, backend, frontend y volúmenes.
 
 Para crear una cuenta de prueba en una base sin demo, usa `docker compose exec backend python manage.py createsuperuser` y después `docker compose exec backend python manage.py access NOMBRE ROL`. Para el rol `requirente` agrega `--unit "Nombre de la unidad"`. La creación como superusuario es solo un medio local para probar la asignación; los permisos de SITRAH se rigen por el perfil.
+
+## Despliegue automático
+
+SITRAH se encuentra alojado en AWS EC2 y cuenta con
+despliegue automático desde la rama main de GitHub.
